@@ -1,23 +1,19 @@
 import DashboardLayout from '@/components/DashboardLayout';
 import { LeaveRequestsTable } from '@/components/LeaveRequestsTable';
-import { mockLeaveRequests } from '@/data/mockData';
+import { useForwardedAndOdRequests, useUpdateLeaveStatus } from '@/hooks/useLeaveRequests';
+import { useProfilesMap, useDepartmentsMap } from '@/hooks/useProfiles';
 import { Card, CardContent } from '@/components/ui/card';
-import { useToast } from '@/hooks/use-toast';
 import { ClipboardList, Briefcase, CheckCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 const PrincipalDashboard = () => {
-  const { toast } = useToast();
+  const { data: allRequests = [] } = useForwardedAndOdRequests();
+  const { data: profilesMap = {} } = useProfilesMap();
+  const { data: departmentsMap = {} } = useDepartmentsMap();
+  const updateStatus = useUpdateLeaveStatus();
 
-  const forwardedRequests = mockLeaveRequests.filter(r => r.status === 'forwarded');
-  const odRequests = mockLeaveRequests.filter(r => r.leaveType === 'od');
-
-  const handleApprove = (id: string) => {
-    toast({ title: 'Leave Approved', description: `Request #${id} has been given final approval.` });
-  };
-  const handleReject = (id: string) => {
-    toast({ title: 'Leave Rejected', description: `Request #${id} has been rejected.`, variant: 'destructive' });
-  };
+  const forwardedRequests = allRequests.filter(r => r.status === 'forwarded');
+  const odRequests = allRequests.filter(r => r.leave_type === 'od');
 
   return (
     <DashboardLayout>
@@ -31,7 +27,7 @@ const PrincipalDashboard = () => {
           {[
             { label: 'Forwarded Requests', value: forwardedRequests.length, icon: <ClipboardList className="w-5 h-5" />, color: 'text-status-forwarded' },
             { label: 'OD Requests', value: odRequests.length, icon: <Briefcase className="w-5 h-5" />, color: 'text-status-pending' },
-            { label: 'Total Processed', value: mockLeaveRequests.filter(r => r.status === 'approved').length, icon: <CheckCircle className="w-5 h-5" />, color: 'text-status-approved' },
+            { label: 'Total Processed', value: allRequests.filter(r => r.status === 'approved').length, icon: <CheckCircle className="w-5 h-5" />, color: 'text-status-approved' },
           ].map(s => (
             <Card key={s.label} className="border border-border">
               <CardContent className="pt-4 pb-3 px-4 flex items-center gap-3">
@@ -45,32 +41,26 @@ const PrincipalDashboard = () => {
           ))}
         </div>
 
-        {/* Forwarded Requests */}
         <div>
           <h2 className="text-lg font-semibold mb-3">Forwarded Requests</h2>
           <LeaveRequestsTable
             requests={forwardedRequests}
-            showActions
-            showFaculty
-            onApprove={handleApprove}
-            onReject={handleReject}
+            showActions showFaculty profilesMap={profilesMap} departmentsMap={departmentsMap}
+            onApprove={(id) => updateStatus.mutate({ id, status: 'approved' })}
+            onReject={(id) => updateStatus.mutate({ id, status: 'rejected' })}
           />
         </div>
 
-        {/* OD Requests */}
         <div>
           <div className="flex items-center gap-2 mb-3">
             <h2 className="text-lg font-semibold">On-Duty Requests</h2>
-            <Badge variant="outline" className="text-status-pending border-status-pending">
-              Highlighted
-            </Badge>
+            <Badge variant="outline" className="text-status-pending border-status-pending">Highlighted</Badge>
           </div>
           <LeaveRequestsTable
             requests={odRequests}
-            showActions
-            showFaculty
-            onApprove={handleApprove}
-            onReject={handleReject}
+            showActions showFaculty profilesMap={profilesMap} departmentsMap={departmentsMap}
+            onApprove={(id) => updateStatus.mutate({ id, status: 'approved' })}
+            onReject={(id) => updateStatus.mutate({ id, status: 'rejected' })}
           />
         </div>
       </div>

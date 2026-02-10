@@ -1,11 +1,13 @@
 import DashboardLayout from '@/components/DashboardLayout';
 import { LeaveRequestsTable } from '@/components/LeaveRequestsTable';
-import { mockLeaveRequests } from '@/data/mockData';
-import { useToast } from '@/hooks/use-toast';
+import { useForwardedAndOdRequests, useUpdateLeaveStatus } from '@/hooks/useLeaveRequests';
+import { useProfilesMap, useDepartmentsMap } from '@/hooks/useProfiles';
 
 const PrincipalRequests = () => {
-  const { toast } = useToast();
-  const forwardedRequests = mockLeaveRequests.filter(r => r.status === 'forwarded' || r.leaveType === 'od');
+  const { data: requests = [] } = useForwardedAndOdRequests();
+  const { data: profilesMap = {} } = useProfilesMap();
+  const { data: departmentsMap = {} } = useDepartmentsMap();
+  const updateStatus = useUpdateLeaveStatus();
 
   return (
     <DashboardLayout>
@@ -15,11 +17,10 @@ const PrincipalRequests = () => {
           <p className="text-muted-foreground text-sm">Forwarded and OD requests requiring final approval</p>
         </div>
         <LeaveRequestsTable
-          requests={forwardedRequests}
-          showActions
-          showFaculty
-          onApprove={(id) => toast({ title: 'Approved', description: `Request #${id} given final approval.` })}
-          onReject={(id) => toast({ title: 'Rejected', description: `Request #${id} rejected.`, variant: 'destructive' })}
+          requests={requests}
+          showActions showFaculty profilesMap={profilesMap} departmentsMap={departmentsMap}
+          onApprove={(id) => updateStatus.mutate({ id, status: 'approved' })}
+          onReject={(id) => updateStatus.mutate({ id, status: 'rejected' })}
         />
       </div>
     </DashboardLayout>

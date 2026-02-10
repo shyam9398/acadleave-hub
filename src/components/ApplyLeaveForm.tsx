@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,8 +6,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useToast } from '@/hooks/use-toast';
 import { Send } from 'lucide-react';
+import { useSubmitLeaveRequest } from '@/hooks/useLeaveRequests';
 
 type LeaveType = 'casual' | 'earned' | 'medical' | 'od';
 
@@ -25,9 +25,8 @@ export const ApplyLeaveForm = () => {
   const [reason, setReason] = useState('');
   const [assignedFaculty, setAssignedFaculty] = useState('');
   const [isHalfDay, setIsHalfDay] = useState(false);
-  const { toast } = useToast();
+  const submitMutation = useSubmitLeaveRequest();
 
-  // Calculate number of days based on dates + half day
   const numberOfDays = useMemo(() => {
     if (!fromDate || !toDate) return 0;
     const from = new Date(fromDate);
@@ -40,20 +39,25 @@ export const ApplyLeaveForm = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (numberOfDays <= 0) {
-      toast({ title: 'Invalid dates', description: 'Please check your from/to dates.', variant: 'destructive' });
-      return;
-    }
-    toast({
-      title: 'Leave Applied Successfully',
-      description: `Your leave request for ${numberOfDays} day(s) has been submitted for approval.`,
+    if (!leaveType || numberOfDays <= 0) return;
+    submitMutation.mutate({
+      leave_type: leaveType,
+      from_date: fromDate,
+      to_date: toDate,
+      number_of_days: numberOfDays,
+      reason,
+      is_half_day: isHalfDay,
+      assigned_faculty: assignedFaculty,
+    }, {
+      onSuccess: () => {
+        setLeaveType('');
+        setFromDate('');
+        setToDate('');
+        setReason('');
+        setAssignedFaculty('');
+        setIsHalfDay(false);
+      },
     });
-    setLeaveType('');
-    setFromDate('');
-    setToDate('');
-    setReason('');
-    setAssignedFaculty('');
-    setIsHalfDay(false);
   };
 
   return (
@@ -131,8 +135,8 @@ export const ApplyLeaveForm = () => {
             />
           </div>
 
-          <Button type="submit" className="w-full h-11 font-semibold">
-            Submit Leave Request
+          <Button type="submit" className="w-full h-11 font-semibold" disabled={submitMutation.isPending}>
+            {submitMutation.isPending ? 'Submitting...' : 'Submit Leave Request'}
           </Button>
         </form>
       </CardContent>

@@ -1,11 +1,14 @@
 import DashboardLayout from '@/components/DashboardLayout';
 import { LeaveRequestsTable } from '@/components/LeaveRequestsTable';
-import { mockLeaveRequests } from '@/data/mockData';
-import { useToast } from '@/hooks/use-toast';
+import { useDepartmentLeaveRequests, useUpdateLeaveStatus } from '@/hooks/useLeaveRequests';
+import { useProfilesMap, useDepartmentsMap } from '@/hooks/useProfiles';
 
 const HODRequests = () => {
-  const { toast } = useToast();
-  const pendingRequests = mockLeaveRequests.filter(r => r.status === 'pending');
+  const { data: requests = [] } = useDepartmentLeaveRequests();
+  const { data: profilesMap = {} } = useProfilesMap();
+  const { data: departmentsMap = {} } = useDepartmentsMap();
+  const updateStatus = useUpdateLeaveStatus();
+  const pendingRequests = requests.filter(r => r.status === 'pending');
 
   return (
     <DashboardLayout>
@@ -18,9 +21,11 @@ const HODRequests = () => {
           requests={pendingRequests}
           showActions
           showFaculty
-          onApprove={(id) => toast({ title: 'Approved', description: `Request #${id} approved.` })}
-          onReject={(id) => toast({ title: 'Rejected', description: `Request #${id} rejected.`, variant: 'destructive' })}
-          onForward={(id) => toast({ title: 'Forwarded', description: `Request #${id} forwarded to Principal.` })}
+          profilesMap={profilesMap}
+          departmentsMap={departmentsMap}
+          onApprove={(id) => updateStatus.mutate({ id, status: 'approved' })}
+          onReject={(id) => updateStatus.mutate({ id, status: 'rejected' })}
+          onForward={(id) => updateStatus.mutate({ id, status: 'forwarded' })}
         />
       </div>
     </DashboardLayout>
