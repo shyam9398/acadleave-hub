@@ -3,7 +3,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { mockNotifications } from '@/data/mockData';
 import {
   Bell,
   CalendarDays,
@@ -55,7 +54,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   if (!user) return null;
 
   const navItems = roleNavItems[user.role] || [];
-  const unreadCount = mockNotifications.filter(n => !n.read).length;
+  const unreadCount = 0;
 
   const roleTitles: Record<string, string> = {
     faculty: 'Faculty',
@@ -155,7 +154,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => { logout(); navigate('/'); }}
+              onClick={async () => { await logout(); navigate('/'); }}
               className="text-muted-foreground"
             >
               <LogOut className="w-5 h-5" />

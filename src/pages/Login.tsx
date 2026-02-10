@@ -1,35 +1,76 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
-import { UserRole } from '@/types/leave';
+import { useAuth, UserRole } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { GraduationCap, Lock, Mail, UserCircle } from 'lucide-react';
+import { GraduationCap, Lock, Mail, UserCircle, Building } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+
+interface Department {
+  id: string;
+  name: string;
+}
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
   const [role, setRole] = useState<UserRole | ''>('');
+  const [departmentId, setDepartmentId] = useState('');
+  const [departments, setDepartments] = useState<Department[]>([]);
   const [isSignUp, setIsSignUp] = useState(false);
-  const { login } = useAuth();
+  const [submitting, setSubmitting] = useState(false);
+  const { login, signup, isAuthenticated, user, loading } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!role) return;
-    const success = login(email, password, role as UserRole);
-    if (success) {
+  useEffect(() => {
+    supabase.from('departments').select('id, name').order('name').then(({ data }) => {
+      if (data) setDepartments(data);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!loading && isAuthenticated && user) {
       const routes: Record<UserRole, string> = {
         faculty: '/faculty',
         hod: '/hod',
         junior_assistant: '/assistant',
         principal: '/principal',
       };
-      navigate(routes[role as UserRole]);
+      navigate(routes[user.role]);
     }
+  }, [isAuthenticated, user, loading, navigate]);
+
+  const needsDepartment = role === 'faculty' || role === 'hod' || role === 'junior_assistant';
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!role) return;
+    if (needsDepartment && !departmentId && isSignUp) {
+      toast({ title: 'Please select your department', variant: 'destructive' });
+      return;
+    }
+
+    setSubmitting(true);
+    if (isSignUp) {
+      const { error } = await signup(email, password, fullName, role as UserRole, needsDepartment ? departmentId : undefined);
+      if (error) {
+        toast({ title: 'Sign Up Failed', description: error, variant: 'destructive' });
+      } else {
+        toast({ title: 'Account Created', description: 'Please check your email to verify your account.' });
+      }
+    } else {
+      const { error } = await login(email, password);
+      if (error) {
+        toast({ title: 'Login Failed', description: error, variant: 'destructive' });
+      }
+    }
+    setSubmitting(false);
   };
 
   const roleLabels: Record<UserRole, string> = {
@@ -38,6 +79,10 @@ const Login = () => {
     junior_assistant: 'Junior Assistant',
     principal: 'Principal',
   };
+
+  if (loading) {
+    return <div className="flex min-h-screen items-center justify-center"><p>Loading...</p></div>;
+  }
 
   return (
     <div className="flex min-h-screen">
@@ -79,6 +124,23 @@ const Login = () => {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-5">
+              {isSignUp && (
+                <div className="space-y-2">
+                  <Label htmlFor="fullName">Full Name</Label>
+                  <div className="relative">
+                    <UserCircle className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      id="fullName"
+                      placeholder="Your full name"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      className="pl-10"
+                      required
+                    />
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <div className="relative">
@@ -107,16 +169,16 @@ const Login = () => {
                     onChange={(e) => setPassword(e.target.value)}
                     className="pl-10"
                     required
+                    minLength={6}
                   />
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="role">Role</Label>
-                <div className="relative">
-                  <Select value={role} onValueChange={(v) => setRole(v as UserRole)}>
-                    <SelectTrigger className="pl-10">
-                      <UserCircle className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              {isSignUp && (
+                <div className="space-y-2">
+                  <Label htmlFor="role">Role</Label>
+                  <Select value={role} onValueChange={(v) => { setRole(v as UserRole); setDepartmentId(''); }}>
+                    <SelectTrigger>
                       <SelectValue placeholder="Select your role" />
                     </SelectTrigger>
                     <SelectContent>
@@ -126,10 +188,29 @@ const Login = () => {
                     </SelectContent>
                   </Select>
                 </div>
-              </div>
+              )}
 
-              <Button type="submit" className="w-full h-11 text-base font-semibold">
-                {isSignUp ? 'Create Account' : 'Sign In'}
+              {isSignUp && needsDepartment && (
+                <div className="space-y-2">
+                  <Label htmlFor="department">Department</Label>
+                  <div className="relative">
+                    <Select value={departmentId} onValueChange={setDepartmentId}>
+                      <SelectTrigger className="pl-10">
+                        <Building className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <SelectValue placeholder="Select your department" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {departments.map((dept) => (
+                          <SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
+
+              <Button type="submit" className="w-full h-11 text-base font-semibold" disabled={submitting}>
+                {submitting ? 'Please wait...' : isSignUp ? 'Create Account' : 'Sign In'}
               </Button>
             </form>
 

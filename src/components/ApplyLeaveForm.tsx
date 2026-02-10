@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,9 +6,10 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { LeaveType } from '@/types/leave';
 import { useToast } from '@/hooks/use-toast';
 import { Send } from 'lucide-react';
+
+type LeaveType = 'casual' | 'earned' | 'medical' | 'od';
 
 const leaveTypeOptions: { value: LeaveType; label: string }[] = [
   { value: 'casual', label: 'Casual Leave' },
@@ -22,19 +23,36 @@ export const ApplyLeaveForm = () => {
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [reason, setReason] = useState('');
+  const [assignedFaculty, setAssignedFaculty] = useState('');
   const [isHalfDay, setIsHalfDay] = useState(false);
   const { toast } = useToast();
 
+  // Calculate number of days based on dates + half day
+  const numberOfDays = useMemo(() => {
+    if (!fromDate || !toDate) return 0;
+    const from = new Date(fromDate);
+    const to = new Date(toDate);
+    if (to < from) return 0;
+    const diffTime = to.getTime() - from.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
+    return isHalfDay ? diffDays - 0.5 : diffDays;
+  }, [fromDate, toDate, isHalfDay]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (numberOfDays <= 0) {
+      toast({ title: 'Invalid dates', description: 'Please check your from/to dates.', variant: 'destructive' });
+      return;
+    }
     toast({
       title: 'Leave Applied Successfully',
-      description: 'Your leave request has been submitted for approval.',
+      description: `Your leave request for ${numberOfDays} day(s) has been submitted for approval.`,
     });
     setLeaveType('');
     setFromDate('');
     setToDate('');
     setReason('');
+    setAssignedFaculty('');
     setIsHalfDay(false);
   };
 
@@ -62,6 +80,16 @@ export const ApplyLeaveForm = () => {
             </Select>
           </div>
 
+          <div className="space-y-2">
+            <Label htmlFor="assignedFaculty">Assigned Faculty</Label>
+            <Input
+              id="assignedFaculty"
+              placeholder="Enter assigned faculty name"
+              value={assignedFaculty}
+              onChange={(e) => setAssignedFaculty(e.target.value)}
+            />
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="from">From Date</Label>
@@ -73,15 +101,22 @@ export const ApplyLeaveForm = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id="halfday"
-              checked={isHalfDay}
-              onCheckedChange={(v) => setIsHalfDay(v === true)}
-            />
-            <Label htmlFor="halfday" className="text-sm font-normal cursor-pointer">
-              Half-day leave
-            </Label>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="halfday"
+                checked={isHalfDay}
+                onCheckedChange={(v) => setIsHalfDay(v === true)}
+              />
+              <Label htmlFor="halfday" className="text-sm font-normal cursor-pointer">
+                Half-day leave
+              </Label>
+            </div>
+            {fromDate && toDate && numberOfDays > 0 && (
+              <div className="text-sm font-medium text-primary">
+                No. of Days: <span className="text-lg font-bold">{numberOfDays}</span>
+              </div>
+            )}
           </div>
 
           <div className="space-y-2">
