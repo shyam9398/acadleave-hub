@@ -1,17 +1,20 @@
 import DashboardLayout from '@/components/DashboardLayout';
 import { LeaveBalanceCards } from '@/components/LeaveBalanceCards';
 import { LeaveRequestsTable } from '@/components/LeaveRequestsTable';
-import { mockLeaveBalance, mockLeaveRequests } from '@/data/mockData';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useMyLeaveRequests } from '@/hooks/useLeaveRequests';
+import { useMyLeaveBalances } from '@/hooks/useLeaveBalances';
+import { Card, CardContent } from '@/components/ui/card';
 import { CalendarDays, CheckCircle, Clock, XCircle } from 'lucide-react';
 
 const FacultyDashboard = () => {
-  const myRequests = mockLeaveRequests.filter(r => r.facultyId === '1');
+  const { data: requests = [] } = useMyLeaveRequests();
+  const { data: balances = [] } = useMyLeaveBalances();
+
   const stats = {
-    total: myRequests.length,
-    approved: myRequests.filter(r => r.status === 'approved').length,
-    pending: myRequests.filter(r => r.status === 'pending').length,
-    rejected: myRequests.filter(r => r.status === 'rejected').length,
+    total: requests.length,
+    approved: requests.filter(r => r.status === 'approved').length,
+    pending: requests.filter(r => r.status === 'pending').length,
+    rejected: requests.filter(r => r.status === 'rejected').length,
   };
 
   return (
@@ -22,7 +25,6 @@ const FacultyDashboard = () => {
           <p className="text-muted-foreground text-sm">Track your leave balance and history</p>
         </div>
 
-        {/* Quick Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
             { label: 'Total Applied', value: stats.total, icon: <CalendarDays className="w-5 h-5" />, color: 'text-primary' },
@@ -42,16 +44,14 @@ const FacultyDashboard = () => {
           ))}
         </div>
 
-        {/* Leave Balance */}
         <div>
           <h2 className="text-lg font-semibold mb-3">Leave Balance</h2>
-          <LeaveBalanceCards balances={mockLeaveBalance} />
+          <LeaveBalanceCards balances={balances} />
         </div>
 
-        {/* Leave History */}
         <div>
           <h2 className="text-lg font-semibold mb-3">Recent Leave History</h2>
-          <LeaveRequestsTable requests={myRequests} />
+          <LeaveRequestsTable requests={requests} />
         </div>
       </div>
     </DashboardLayout>

@@ -1,39 +1,30 @@
-import { LeaveRequest } from '@/types/leave';
+import { LeaveRequestRow } from '@/hooks/useLeaveRequests';
 import { StatusBadge } from './StatusBadge';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Check, X, Forward } from 'lucide-react';
 
 interface LeaveRequestsTableProps {
-  requests: LeaveRequest[];
+  requests: LeaveRequestRow[];
   showActions?: boolean;
   showFaculty?: boolean;
+  profilesMap?: Record<string, { full_name: string; department_id: string | null }>;
+  departmentsMap?: Record<string, string>;
   onApprove?: (id: string) => void;
   onReject?: (id: string) => void;
   onForward?: (id: string) => void;
 }
 
 const leaveTypeLabels: Record<string, string> = {
-  casual: 'Casual',
-  earned: 'Earned',
-  medical: 'Medical',
-  od: 'On-Duty',
+  casual: 'Casual', earned: 'Earned', medical: 'Medical', od: 'On-Duty',
 };
 
 export const LeaveRequestsTable = ({
-  requests,
-  showActions = false,
-  showFaculty = false,
-  onApprove,
-  onReject,
-  onForward,
+  requests, showActions = false, showFaculty = false,
+  profilesMap = {}, departmentsMap = {},
+  onApprove, onReject, onForward,
 }: LeaveRequestsTableProps) => {
   return (
     <div className="rounded-xl border border-border overflow-hidden bg-card">
@@ -59,53 +50,58 @@ export const LeaveRequestsTable = ({
               </TableCell>
             </TableRow>
           ) : (
-            requests.map((req, index) => (
-              <TableRow key={req.id}>
-                <TableCell className="font-medium">{index + 1}</TableCell>
-                {showFaculty && (
+            requests.map((req, index) => {
+              const profile = profilesMap[req.user_id];
+              const facultyName = profile?.full_name || 'Unknown';
+              const deptName = req.department_id ? (departmentsMap[req.department_id] || '') : '';
+              return (
+                <TableRow key={req.id}>
+                  <TableCell className="font-medium">{index + 1}</TableCell>
+                  {showFaculty && (
+                    <TableCell>
+                      <div>
+                        <p className="font-medium text-sm">{facultyName}</p>
+                        <p className="text-xs text-muted-foreground">{deptName}</p>
+                      </div>
+                    </TableCell>
+                  )}
                   <TableCell>
-                    <div>
-                      <p className="font-medium text-sm">{req.facultyName}</p>
-                      <p className="text-xs text-muted-foreground">{req.department}</p>
-                    </div>
+                    <span className="text-xs font-medium px-2 py-1 rounded-md bg-secondary text-secondary-foreground">
+                      {leaveTypeLabels[req.leave_type] || req.leave_type}
+                    </span>
                   </TableCell>
-                )}
-                <TableCell>
-                  <span className="text-xs font-medium px-2 py-1 rounded-md bg-secondary text-secondary-foreground">
-                    {leaveTypeLabels[req.leaveType]}
-                  </span>
-                </TableCell>
-                <TableCell className="text-sm">{req.fromDate}</TableCell>
-                <TableCell className="text-sm">{req.toDate}</TableCell>
-                <TableCell className="text-sm font-medium">{req.numberOfDays}</TableCell>
-                <TableCell className="text-sm max-w-[200px] truncate">{req.reason}</TableCell>
-                <TableCell><StatusBadge status={req.status} /></TableCell>
-                {showActions && req.status === 'pending' && (
-                  <TableCell>
-                    <div className="flex gap-1">
-                      {onApprove && (
-                        <Button size="icon" variant="ghost" className="h-8 w-8 text-status-approved hover:bg-accent" onClick={() => onApprove(req.id)}>
-                          <Check className="w-4 h-4" />
-                        </Button>
-                      )}
-                      {onReject && (
-                        <Button size="icon" variant="ghost" className="h-8 w-8 text-status-rejected hover:bg-accent" onClick={() => onReject(req.id)}>
-                          <X className="w-4 h-4" />
-                        </Button>
-                      )}
-                      {onForward && (
-                        <Button size="icon" variant="ghost" className="h-8 w-8 text-status-forwarded hover:bg-accent" onClick={() => onForward(req.id)}>
-                          <Forward className="w-4 h-4" />
-                        </Button>
-                      )}
-                    </div>
-                  </TableCell>
-                )}
-                {showActions && req.status !== 'pending' && (
-                  <TableCell className="text-xs text-muted-foreground">—</TableCell>
-                )}
-              </TableRow>
-            ))
+                  <TableCell className="text-sm">{req.from_date}</TableCell>
+                  <TableCell className="text-sm">{req.to_date}</TableCell>
+                  <TableCell className="text-sm font-medium">{req.number_of_days}</TableCell>
+                  <TableCell className="text-sm max-w-[200px] truncate">{req.reason}</TableCell>
+                  <TableCell><StatusBadge status={req.status as any} /></TableCell>
+                  {showActions && req.status === 'pending' && (
+                    <TableCell>
+                      <div className="flex gap-1">
+                        {onApprove && (
+                          <Button size="icon" variant="ghost" className="h-8 w-8 text-status-approved hover:bg-accent" onClick={() => onApprove(req.id)}>
+                            <Check className="w-4 h-4" />
+                          </Button>
+                        )}
+                        {onReject && (
+                          <Button size="icon" variant="ghost" className="h-8 w-8 text-status-rejected hover:bg-accent" onClick={() => onReject(req.id)}>
+                            <X className="w-4 h-4" />
+                          </Button>
+                        )}
+                        {onForward && (
+                          <Button size="icon" variant="ghost" className="h-8 w-8 text-status-forwarded hover:bg-accent" onClick={() => onForward(req.id)}>
+                            <Forward className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  )}
+                  {showActions && req.status !== 'pending' && (
+                    <TableCell className="text-xs text-muted-foreground">—</TableCell>
+                  )}
+                </TableRow>
+              );
+            })
           )}
         </TableBody>
       </Table>

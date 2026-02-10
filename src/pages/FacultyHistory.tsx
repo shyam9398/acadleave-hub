@@ -1,9 +1,10 @@
 import DashboardLayout from '@/components/DashboardLayout';
 import { LeaveRequestsTable } from '@/components/LeaveRequestsTable';
-import { mockLeaveRequests } from '@/data/mockData';
+import { useMyLeaveRequests } from '@/hooks/useLeaveRequests';
 
 const FacultyHistory = () => {
-  const myRequests = mockLeaveRequests.filter(r => r.facultyId === '1');
+  const { data: requests = [] } = useMyLeaveRequests();
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -11,7 +12,7 @@ const FacultyHistory = () => {
           <h1 className="text-2xl font-bold mb-1">Leave History</h1>
           <p className="text-muted-foreground text-sm">Complete history of your leave applications</p>
         </div>
-        <LeaveRequestsTable requests={myRequests} />
+        <LeaveRequestsTable requests={requests} />
       </div>
     </DashboardLayout>
   );

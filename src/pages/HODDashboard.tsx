@@ -1,35 +1,31 @@
 import { useState } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
 import { LeaveRequestsTable } from '@/components/LeaveRequestsTable';
-import { mockLeaveRequests } from '@/data/mockData';
+import { useDepartmentLeaveRequests, useUpdateLeaveStatus } from '@/hooks/useLeaveRequests';
+import { useProfilesMap, useDepartmentsMap } from '@/hooks/useProfiles';
 import { Card, CardContent } from '@/components/ui/card';
-import { useToast } from '@/hooks/use-toast';
-import { ClipboardList, Clock, CheckCircle, Forward } from 'lucide-react';
+import { ClipboardList, Clock, CheckCircle } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 
 const HODDashboard = () => {
-  const { toast } = useToast();
   const [filterType, setFilterType] = useState<string>('all');
   const [searchName, setSearchName] = useState('');
+  const { data: requests = [] } = useDepartmentLeaveRequests();
+  const { data: profilesMap = {} } = useProfilesMap();
+  const { data: departmentsMap = {} } = useDepartmentsMap();
+  const updateStatus = useUpdateLeaveStatus();
 
-  const departmentRequests = mockLeaveRequests.filter(r => r.facultyId !== '2');
+  let filtered = requests;
+  if (filterType !== 'all') filtered = filtered.filter(r => r.leave_type === filterType);
+  if (searchName) {
+    filtered = filtered.filter(r => {
+      const name = profilesMap[r.user_id]?.full_name || '';
+      return name.toLowerCase().includes(searchName.toLowerCase());
+    });
+  }
 
-  let filtered = departmentRequests;
-  if (filterType !== 'all') filtered = filtered.filter(r => r.leaveType === filterType);
-  if (searchName) filtered = filtered.filter(r => r.facultyName.toLowerCase().includes(searchName.toLowerCase()));
-
-  const pending = departmentRequests.filter(r => r.status === 'pending');
-
-  const handleApprove = (id: string) => {
-    toast({ title: 'Leave Approved', description: `Request #${id} has been approved.` });
-  };
-  const handleReject = (id: string) => {
-    toast({ title: 'Leave Rejected', description: `Request #${id} has been rejected.`, variant: 'destructive' });
-  };
-  const handleForward = (id: string) => {
-    toast({ title: 'Leave Forwarded', description: `Request #${id} forwarded to Principal.` });
-  };
+  const pending = requests.filter(r => r.status === 'pending');
 
   return (
     <DashboardLayout>
@@ -41,9 +37,9 @@ const HODDashboard = () => {
 
         <div className="grid grid-cols-3 gap-4">
           {[
-            { label: 'Total Requests', value: departmentRequests.length, icon: <ClipboardList className="w-5 h-5" />, color: 'text-primary' },
+            { label: 'Total Requests', value: requests.length, icon: <ClipboardList className="w-5 h-5" />, color: 'text-primary' },
             { label: 'Pending', value: pending.length, icon: <Clock className="w-5 h-5" />, color: 'text-status-pending' },
-            { label: 'Processed', value: departmentRequests.length - pending.length, icon: <CheckCircle className="w-5 h-5" />, color: 'text-status-approved' },
+            { label: 'Processed', value: requests.length - pending.length, icon: <CheckCircle className="w-5 h-5" />, color: 'text-status-approved' },
           ].map(s => (
             <Card key={s.label} className="border border-border">
               <CardContent className="pt-4 pb-3 px-4 flex items-center gap-3">
@@ -57,18 +53,10 @@ const HODDashboard = () => {
           ))}
         </div>
 
-        {/* Filters */}
         <div className="flex gap-3">
-          <Input
-            placeholder="Search by faculty name..."
-            value={searchName}
-            onChange={(e) => setSearchName(e.target.value)}
-            className="max-w-xs"
-          />
+          <Input placeholder="Search by faculty name..." value={searchName} onChange={(e) => setSearchName(e.target.value)} className="max-w-xs" />
           <Select value={filterType} onValueChange={setFilterType}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue />
-            </SelectTrigger>
+            <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Types</SelectItem>
               <SelectItem value="casual">Casual</SelectItem>
@@ -83,9 +71,11 @@ const HODDashboard = () => {
           requests={filtered}
           showActions
           showFaculty
-          onApprove={handleApprove}
-          onReject={handleReject}
-          onForward={handleForward}
+          profilesMap={profilesMap}
+          departmentsMap={departmentsMap}
+          onApprove={(id) => updateStatus.mutate({ id, status: 'approved' })}
+          onReject={(id) => updateStatus.mutate({ id, status: 'rejected' })}
+          onForward={(id) => updateStatus.mutate({ id, status: 'forwarded' })}
         />
       </div>
     </DashboardLayout>

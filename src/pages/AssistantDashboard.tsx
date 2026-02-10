@@ -1,6 +1,7 @@
 import DashboardLayout from '@/components/DashboardLayout';
 import { LeaveRequestsTable } from '@/components/LeaveRequestsTable';
-import { mockLeaveRequests } from '@/data/mockData';
+import { useAllLeaveRequests } from '@/hooks/useLeaveRequests';
+import { useProfilesMap, useDepartmentsMap } from '@/hooks/useProfiles';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { FileText, Users, Bell, Download, Printer } from 'lucide-react';
@@ -8,11 +9,14 @@ import { useToast } from '@/hooks/use-toast';
 
 const AssistantDashboard = () => {
   const { toast } = useToast();
+  const { data: requests = [] } = useAllLeaveRequests();
+  const { data: profilesMap = {} } = useProfilesMap();
+  const { data: departmentsMap = {} } = useDepartmentsMap();
 
   const stats = {
-    total: mockLeaveRequests.length,
-    approved: mockLeaveRequests.filter(r => r.status === 'approved').length,
-    pending: mockLeaveRequests.filter(r => r.status === 'pending').length,
+    total: requests.length,
+    approved: requests.filter(r => r.status === 'approved').length,
+    pending: requests.filter(r => r.status === 'pending').length,
   };
 
   return (
@@ -24,18 +28,10 @@ const AssistantDashboard = () => {
             <p className="text-muted-foreground text-sm">Department-wise leave records and status summaries</p>
           </div>
           <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => toast({ title: 'Printing...', description: 'Preparing leave records for print.' })}
-            >
+            <Button variant="outline" size="sm" onClick={() => toast({ title: 'Printing...', description: 'Preparing leave records for print.' })}>
               <Printer className="w-4 h-4 mr-1" /> Print
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => toast({ title: 'Downloading...', description: 'Leave records will be downloaded shortly.' })}
-            >
+            <Button variant="outline" size="sm" onClick={() => toast({ title: 'Downloading...', description: 'Leave records will be downloaded shortly.' })}>
               <Download className="w-4 h-4 mr-1" /> Download
             </Button>
           </div>
@@ -59,7 +55,7 @@ const AssistantDashboard = () => {
           ))}
         </div>
 
-        <LeaveRequestsTable requests={mockLeaveRequests} showFaculty />
+        <LeaveRequestsTable requests={requests} showFaculty profilesMap={profilesMap} departmentsMap={departmentsMap} />
       </div>
     </DashboardLayout>
   );
