@@ -62,7 +62,7 @@ const Login = () => {
       if (error) {
         toast({ title: 'Sign Up Failed', description: error, variant: 'destructive' });
       } else {
-        toast({ title: 'Account Created', description: 'Please check your email to verify your account.' });
+        toast({ title: 'Account Created', description: 'You are now logged in!' });
       }
     } else {
       const { error } = await login(email, password);
