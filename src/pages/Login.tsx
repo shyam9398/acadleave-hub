@@ -50,8 +50,8 @@ const Login = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!role) return;
-    if (needsDepartment && !departmentId && isSignUp) {
+    if (isSignUp && !role) return;
+    if (isSignUp && needsDepartment && !departmentId) {
       toast({ title: 'Please select your department', variant: 'destructive' });
       return;
     }
